@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowDeveloperUserToWriteToHouseZip",
+            "Effect": "Allow",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::mybuckdt/party/house.zip",
+            "Principal": {
+                "AWS": "arn:aws:iam::123456789012:user/developeruser"
+            }
+        },
+        {
+            "Sid": "DenyOthers",
+            "Effect": "Deny",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::mybuckdt/party/house.zip",
+            "Principal": "*"
+        }
+    ]
+}
