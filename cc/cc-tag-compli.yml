@@ -1,0 +1,17 @@
+policies: 
+  - name: ec2-tag-compliance
+    resource: ec2
+    description: |
+      Checks for EC2 instances that are missing the tag Environment
+    filters:
+      - "tag:Environment": absent
+    actions:
+      - type: notify
+        template: default
+        priority_header: '2'
+        subject: 'Missing {{ account }} environment tag in {{ region }}'
+        to:
+          - email@example.com
+        transport:
+          type: sns
+          topic: 'arn:aws:sns:us-west-2:123456789012:NotifyMe'
