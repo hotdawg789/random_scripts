@@ -7,17 +7,19 @@ def nodeLabels = ['label1', 'label2', 'label3'] // Replace with your labels
 
 // Function to check if a job is using any of the specified node labels
 def usesAnyNodeLabel(Job job, List nodeLabels) {
-    String assignedNode = null
+    def assignedLabel = null
 
     if (job instanceof WorkflowJob) {
-        assignedNode = job.getProperty(hudson.model.ParametersDefinitionProperty)?.assignedLabelString
+        // For WorkflowJob, the label might be in the definition property
+        assignedLabel = job.assignedLabel?.name
     } else {
-        assignedNode = job.assignedLabelString
+        // For other job types, use the assignedLabelString directly
+        assignedLabel = job.assignedLabelString
     }
 
-    if (assignedNode != null) {
+    if (assignedLabel != null) {
         nodeLabels.each { label ->
-            if (assignedNode.contains(label)) {
+            if (assignedLabel.contains(label)) {
                 return true
             }
         }
