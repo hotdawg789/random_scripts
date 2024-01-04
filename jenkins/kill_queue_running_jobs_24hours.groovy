@@ -1,7 +1,7 @@
 import java.util.concurrent.TimeUnit
 import hudson.model.Executor
 import hudson.model.Queue
-import hudson.model.Result
+import org.jenkinsci.plugins.workflow.job.WorkflowRun
 
 // Define the duration threshold for running jobs and queued items (24 hours in milliseconds)
 final long DURATION_THRESHOLD = TimeUnit.HOURS.toMillis(24)
@@ -18,8 +18,15 @@ Jenkins.instance.nodes.each { node ->
             long timeRunning = currentTime - buildingSince
 
             if (timeRunning > DURATION_THRESHOLD) {
-                println "Terminating running job: ${currentExecutable.getParent().fullDisplayName}, Running Time: ${timeRunning / 1000 / 60 / 60} hours"
-                executor.interrupt(Result.ABORTED)
+                println "Attempting to terminate job: ${currentExecutable.getParent().fullDisplayName}, Running Time: ${timeRunning / 1000 / 60 / 60} hours"
+                
+                // Check if the job is a WorkflowRun (Pipeline) and terminate accordingly
+                if (currentExecutable instanceof WorkflowRun) {
+                    ((WorkflowRun) currentExecutable).doKill()
+                } else {
+                    // For other job types
+                    executor.interrupt()
+                }
             }
         }
     }
