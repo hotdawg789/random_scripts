@@ -9,19 +9,29 @@ api_token = 'your_api_token'
 
 import requests
 from requests.auth import HTTPBasicAuth
+import xml.etree.ElementTree as ET
 
+# Jenkins details
 jenkins_url = "http://yourjenkins.example.com"
-crumb_issuer_url = jenkins_url + "/crumbIssuer/api/xml"
+crumb_issuer_endpoint = "/crumbIssuer/api/xml"
 user = 'your_user'
 api_token = 'your_api_token'
 
-# Get the crumb
-crumb_response = requests.get(crumb_issuer_url, auth=HTTPBasicAuth(user, api_token))
-crumb = crumb_response.text.split(':')
-crumb_field = crumb[0]
-crumb_value = crumb[1]
+# Get CSRF crumb
+crumb_response = requests.get(
+    jenkins_url + crumb_issuer_endpoint, 
+    auth=HTTPBasicAuth(user, api_token)
+)
 
-# Now include this crumb_field and crumb_value in the headers of your subsequent POST requests
+if crumb_response.status_code == 200:
+    # Parse the XML response
+    root = ET.fromstring(crumb_response.text)
+    crumb_field = root.find('crumbRequestField').text
+    crumb_value = root.find('crumb').text
+else:
+    print(f"Failed to get crumb: {crumb_response.status_code}")
+    print(crumb_response.text)
+    exit(1)
 
 # Groovy script you want to execute
 groovy_script = """
