@@ -1,30 +1,36 @@
 pipeline {
     agent any
-
+    
     stages {
-        stage('Initial Stage') {
-            steps {
-                echo 'This step will run for every commit on every branch.'
-            }
-        }
-
-        stage('Release Branch Stage') {
-            // This stage will only run for branches starting with 'release'
+        stage('Invoke AWS Lambda Function') {
             when {
+                // This condition matches any branch starting with 'release'
                 branch pattern: "release*", comparator: "GLOB"
             }
             steps {
                 script {
                     // Use git commands to get the commit hash
-                    def commitHash = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
-                    echo "Running for a release branch. Commit hash: ${commitHash}"
+                    def commitHash = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    // Retrieve the branch name from the BRANCH_NAME environment variable
+                    def branchName = env.BRANCH_NAME
+                    echo "Branch name: ${branchName}"
+                    echo "Commit hash for the current build: ${commitHash}"
+
+                    // Construct the payload with both branch name and commit hash
+                    def payload = "{\\\"branchName\\\":\\\"${branchName}\\\", \\\"commitHash\\\":\\\"${commitHash}\\\"}"
 
                     // Assuming AWS CLI is configured on the Jenkins agent
                     // Replace 'your_lambda_function_name' with your actual Lambda function name
-                    // The payload here passes the commit hash; adjust the payload as necessary
-                    sh "aws lambda invoke --function-name your_lambda_function_name --payload '{\"commitHash\":\"${commitHash}\"}' response.json"
-                    
-                    // Optionally, print the Lambda function response
+                    // Pass the constructed payload for the Lambda invocation
+                    sh """
+                    aws lambda invoke \
+                        --function-name your_lambda_function_name \
+                        --payload '${payload}' \
+                        response.json
+                    """
+
+                    // Optionally, print the Lambda function response stored in response.json
+                    echo "Lambda function response:"
                     sh "cat response.json"
                 }
             }
@@ -33,9 +39,9 @@ pipeline {
 
     post {
         always {
-            // Clean-up actions, such as deleting temporary files
+            // Clean-up actions, like deleting the temporary response.json file
             sh "rm -f response.json"
-            echo 'Cleanup complete.'
+            echo "Clean-up complete."
         }
     }
 }
