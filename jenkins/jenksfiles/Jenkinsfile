@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Initial Stage') {
+            steps {
+                echo 'This step will run for every commit on every branch.'
+            }
+        }
+
+        stage('Release Branch Stage') {
+            // This stage will only run for branches starting with 'release'
+            when {
+                branch pattern: "release*", comparator: "GLOB"
+            }
+            steps {
+                script {
+                    // Use git commands to get the commit hash
+                    def commitHash = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+                    echo "Running for a release branch. Commit hash: ${commitHash}"
+
+                    // Assuming AWS CLI is configured on the Jenkins agent
+                    // Replace 'your_lambda_function_name' with your actual Lambda function name
+                    // The payload here passes the commit hash; adjust the payload as necessary
+                    sh "aws lambda invoke --function-name your_lambda_function_name --payload '{\"commitHash\":\"${commitHash}\"}' response.json"
+                    
+                    // Optionally, print the Lambda function response
+                    sh "cat response.json"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean-up actions, such as deleting temporary files
+            sh "rm -f response.json"
+            echo 'Cleanup complete.'
+        }
+    }
+}
