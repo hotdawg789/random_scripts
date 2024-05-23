@@ -20,7 +20,7 @@ def getBuildStartTime(build) {
 }
 
 // Function to handle PlaceholderExecutable
-def handlePlaceholderExecutable(executable, now, longRunningThreshold) {
+def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) {
     def parentRun = executable.parentExecutable
     if (parentRun != null && parentRun instanceof Run) {
         def build = parentRun
@@ -31,11 +31,15 @@ def handlePlaceholderExecutable(executable, now, longRunningThreshold) {
                 def duration = now - startTime
                 if (duration > longRunningThreshold) {
                     printJobDetails(job, build, duration)
+                    counter.value += 1
                 }
             }
         }
     }
 }
+
+// Counter to track long-running builds
+def counter = [value: 0]
 
 // Iterate over all executors
 Jenkins.instance.computers.each { computer ->
@@ -54,11 +58,12 @@ Jenkins.instance.computers.each { computer ->
                         def duration = now - startTime
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
+                            counter.value += 1
                         }
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter)
             }
         }
     }
@@ -75,14 +80,22 @@ Jenkins.instance.computers.each { computer ->
                         def duration = now - startTime
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
+                            counter.value += 1
                         }
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter)
             }
         }
     }
+}
+
+// Print the final count or criteria_not_met if no long-running builds were found
+if (counter.value == 0) {
+    println "criteria_not_met"
+} else {
+    println "Total long-running builds found: ${counter.value}"
 }
 
 println "Finished checking for long-running builds."
