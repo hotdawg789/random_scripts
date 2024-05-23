@@ -2,6 +2,7 @@ import jenkins.model.*
 import hudson.model.*
 import java.util.concurrent.TimeUnit
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
+import org.jenkinsci.plugins.workflow.job.WorkflowRun
 import com.tikal.jenkins.plugins.multijob.MultiJobBuild
 
 // Function to print job details
@@ -13,7 +14,7 @@ def printJobDetails(job, build, duration) {
 def getBuildStartTime(build) {
     if (build instanceof Run) {
         return build.getStartTimeInMillis()
-    } else if (build instanceof org.jenkinsci.plugins.workflow.job.WorkflowRun) {
+    } else if (build instanceof WorkflowRun) {
         return build.getStartTimeInMillis()
     } else if (build instanceof MultiJobBuild) {
         return build.getStartTimeInMillis()
@@ -52,7 +53,7 @@ Jenkins.instance.computers.each { computer ->
     computer.executors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run || executable instanceof MultiJobBuild) {
+            if (executable instanceof Run || executable instanceof WorkflowRun || executable instanceof MultiJobBuild) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -74,7 +75,7 @@ Jenkins.instance.computers.each { computer ->
     computer.oneOffExecutors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run || executable instanceof MultiJobBuild) {
+            if (executable instanceof Run || executable instanceof WorkflowRun || executable instanceof MultiJobBuild) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -98,3 +99,5 @@ Jenkins.instance.computers.each { computer ->
 if (counter == 0) {
     println "criteria_not_met"
 }
+
+println "Finished checking for long-running builds."
