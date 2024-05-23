@@ -3,9 +3,6 @@ import hudson.model.*
 import java.util.concurrent.TimeUnit
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
 
-// Threshold for long-running jobs (24 hours in milliseconds)
-def longRunningThreshold = TimeUnit.HOURS.toMillis(24)
-
 // Function to print job details
 def printJobDetails(job, build, duration) {
     println "Job: ${job.fullDisplayName}, Build: #${build.number}, Duration: ${duration / 1000 / 60 / 60} hours"
@@ -23,7 +20,7 @@ def getBuildStartTime(build) {
 }
 
 // Function to handle PlaceholderExecutable
-def handlePlaceholderExecutable(executable, now) {
+def handlePlaceholderExecutable(executable, now, longRunningThreshold) {
     def parentRun = executable.parentExecutable
     if (parentRun != null && parentRun instanceof Run) {
         def build = parentRun
@@ -41,8 +38,10 @@ def handlePlaceholderExecutable(executable, now) {
 }
 
 // Iterate over all executors
-def now = System.currentTimeMillis()
 Jenkins.instance.computers.each { computer ->
+    def now = System.currentTimeMillis()
+    def longRunningThreshold = TimeUnit.HOURS.toMillis(24)
+    
     computer.executors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
@@ -59,7 +58,7 @@ Jenkins.instance.computers.each { computer ->
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold)
             }
         }
     }
@@ -80,7 +79,7 @@ Jenkins.instance.computers.each { computer ->
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold)
             }
         }
     }
