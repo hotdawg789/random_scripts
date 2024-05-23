@@ -2,6 +2,7 @@ import jenkins.model.*
 import hudson.model.*
 import java.util.concurrent.TimeUnit
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
+import com.tikal.jenkins.plugins.multijob.MultiJobBuild
 
 // Function to print job details
 def printJobDetails(job, build, duration) {
@@ -13,6 +14,8 @@ def getBuildStartTime(build) {
     if (build instanceof Run) {
         return build.getStartTimeInMillis()
     } else if (build instanceof org.jenkinsci.plugins.workflow.job.WorkflowRun) {
+        return build.getStartTimeInMillis()
+    } else if (build instanceof MultiJobBuild) {
         return build.getStartTimeInMillis()
     } else {
         return -1
@@ -31,7 +34,7 @@ def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) 
                 def duration = now - startTime
                 if (duration > longRunningThreshold) {
                     printJobDetails(job, build, duration)
-                    counter.value += 1
+                    counter++
                 }
             }
         }
@@ -39,7 +42,7 @@ def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) 
 }
 
 // Counter to track long-running builds
-def counter = [value: 0]
+def counter = 0
 
 // Iterate over all executors
 Jenkins.instance.computers.each { computer ->
@@ -49,7 +52,7 @@ Jenkins.instance.computers.each { computer ->
     computer.executors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run) {
+            if (executable instanceof Run || executable instanceof MultiJobBuild) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -58,7 +61,7 @@ Jenkins.instance.computers.each { computer ->
                         def duration = now - startTime
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
-                            counter.value += 1
+                            counter++
                         }
                     }
                 }
@@ -71,7 +74,7 @@ Jenkins.instance.computers.each { computer ->
     computer.oneOffExecutors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run) {
+            if (executable instanceof Run || executable instanceof MultiJobBuild) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -80,7 +83,7 @@ Jenkins.instance.computers.each { computer ->
                         def duration = now - startTime
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
-                            counter.value += 1
+                            counter++
                         }
                     }
                 }
@@ -91,11 +94,7 @@ Jenkins.instance.computers.each { computer ->
     }
 }
 
-// Print the final count or criteria_not_met if no long-running builds were found
-if (counter.value == 0) {
+// Print criteria_not_met if no long-running builds were found
+if (counter == 0) {
     println "criteria_not_met"
-} else {
-    println "Total long-running builds found: ${counter.value}"
 }
-
-println "Finished checking for long-running builds."
