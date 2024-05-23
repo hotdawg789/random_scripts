@@ -1,11 +1,10 @@
 import jenkins.model.*
 import hudson.model.*
 import java.util.concurrent.TimeUnit
-import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution.PlaceholderTask
+import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
 
 // Threshold for long-running jobs (24 hours in milliseconds)
 def longRunningThreshold = TimeUnit.HOURS.toMillis(24)
-def now = System.currentTimeMillis()
 
 // Function to print job details
 def printJobDetails(job, build, duration) {
@@ -24,7 +23,7 @@ def getBuildStartTime(build) {
 }
 
 // Function to handle PlaceholderExecutable
-def handlePlaceholderExecutable(executable) {
+def handlePlaceholderExecutable(executable, now) {
     def parentRun = executable.parentExecutable
     if (parentRun != null && parentRun instanceof Run) {
         def build = parentRun
@@ -42,6 +41,7 @@ def handlePlaceholderExecutable(executable) {
 }
 
 // Iterate over all executors
+def now = System.currentTimeMillis()
 Jenkins.instance.computers.each { computer ->
     computer.executors.each { executor ->
         def executable = executor.currentExecutable
@@ -58,8 +58,8 @@ Jenkins.instance.computers.each { computer ->
                         }
                     }
                 }
-            } else if (executable instanceof PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable)
+            } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
+                handlePlaceholderExecutable(executable, now)
             }
         }
     }
@@ -79,8 +79,8 @@ Jenkins.instance.computers.each { computer ->
                         }
                     }
                 }
-            } else if (executable instanceof PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable)
+            } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
+                handlePlaceholderExecutable(executable, now)
             }
         }
     }
