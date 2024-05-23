@@ -2,7 +2,9 @@ import jenkins.model.*
 import hudson.model.*
 import java.util.concurrent.TimeUnit
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
+import org.jenkinsci.plugins.workflow.job.WorkflowRun
 import com.tikal.jenkins.plugins.multijob.MultiJobBuild
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
 
 // Function to print job details
 def printJobDetails(job, build, duration) {
@@ -44,6 +46,23 @@ def counter = 0
 // Set to track processed builds
 def processedBuilds = new HashSet()
 
+// Function to process builds in a job
+def processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds) {
+    job.getBuilds().each { build ->
+        if (build.isBuilding() && !processedBuilds.contains(build)) {
+            def startTime = getBuildStartTime(build)
+            if (startTime > 0) {
+                def duration = now - startTime
+                if (duration > longRunningThreshold) {
+                    printJobDetails(job, build, duration)
+                    counter++
+                    processedBuilds.add(build)
+                }
+            }
+        }
+    }
+}
+
 // Iterate over all executors
 Jenkins.instance.computers.each { computer ->
     def now = System.currentTimeMillis()
@@ -56,15 +75,7 @@ Jenkins.instance.computers.each { computer ->
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
-                    def startTime = getBuildStartTime(build)
-                    if (startTime > 0) {
-                        def duration = now - startTime
-                        if (duration > longRunningThreshold) {
-                            printJobDetails(job, build, duration)
-                            counter++
-                            processedBuilds.add(build)
-                        }
-                    }
+                    processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds)
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
                 handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
@@ -79,15 +90,7 @@ Jenkins.instance.computers.each { computer ->
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
-                    def startTime = getBuildStartTime(build)
-                    if (startTime > 0) {
-                        def duration = now - startTime
-                        if (duration > longRunningThreshold) {
-                            printJobDetails(job, build, duration)
-                            counter++
-                            processedBuilds.add(build)
-                        }
-                    }
+                    processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds)
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
                 handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
@@ -96,9 +99,14 @@ Jenkins.instance.computers.each { computer ->
     }
 }
 
+// Check multibranch projects for long-running builds
+Jenkins.instance.getAllItems(WorkflowMultiBranchProject.class).each { multiBranchProject ->
+    multiBranchProject.getItems().each { branchProject ->
+        processJobBuilds(branchProject, now, longRunningThreshold, counter, processedBuilds)
+    }
+}
+
 // Print criteria_not_met if no long-running builds were found
 if (counter == 0) {
     println "criteria_not_met"
 }
-
-println "Finished checking for long-running builds."
