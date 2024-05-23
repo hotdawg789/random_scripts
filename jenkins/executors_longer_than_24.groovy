@@ -19,9 +19,9 @@ def getBuildStartTime(build) {
 }
 
 // Function to handle PlaceholderExecutable
-def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) {
+def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds) {
     def parentRun = executable.parentExecutable
-    if (parentRun != null && parentRun instanceof Run) {
+    if (parentRun != null && parentRun instanceof Run && !processedBuilds.contains(parentRun)) {
         def build = parentRun
         if (build.isBuilding()) {
             def job = build.getParent()
@@ -31,6 +31,7 @@ def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) 
                 if (duration > longRunningThreshold) {
                     printJobDetails(job, build, duration)
                     counter++
+                    processedBuilds.add(build)
                 }
             }
         }
@@ -40,6 +41,9 @@ def handlePlaceholderExecutable(executable, now, longRunningThreshold, counter) 
 // Counter to track long-running builds
 def counter = 0
 
+// Set to track processed builds
+def processedBuilds = new HashSet()
+
 // Iterate over all executors
 Jenkins.instance.computers.each { computer ->
     def now = System.currentTimeMillis()
@@ -48,7 +52,7 @@ Jenkins.instance.computers.each { computer ->
     computer.executors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run) {
+            if (executable instanceof Run && !processedBuilds.contains(executable)) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -58,11 +62,12 @@ Jenkins.instance.computers.each { computer ->
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
                             counter++
+                            processedBuilds.add(build)
                         }
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
             }
         }
     }
@@ -70,7 +75,7 @@ Jenkins.instance.computers.each { computer ->
     computer.oneOffExecutors.each { executor ->
         def executable = executor.currentExecutable
         if (executable != null) {
-            if (executable instanceof Run) {
+            if (executable instanceof Run && !processedBuilds.contains(executable)) {
                 def build = executable
                 if (build.isBuilding()) {  // Check if the build is still running
                     def job = build.getParent()
@@ -80,11 +85,12 @@ Jenkins.instance.computers.each { computer ->
                         if (duration > longRunningThreshold) {
                             printJobDetails(job, build, duration)
                             counter++
+                            processedBuilds.add(build)
                         }
                     }
                 }
             } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter)
+                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
             }
         }
     }
@@ -95,3 +101,4 @@ if (counter == 0) {
     println "criteria_not_met"
 }
 
+println "Finished checking for long-running builds."
