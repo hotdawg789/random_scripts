@@ -4,7 +4,6 @@ import java.util.concurrent.TimeUnit
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution
 import org.jenkinsci.plugins.workflow.job.WorkflowRun
 import com.tikal.jenkins.plugins.multijob.MultiJobBuild
-import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
 
 // Function to print job details
 def printJobDetails(job, build, duration) {
@@ -63,46 +62,29 @@ def processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds) {
     }
 }
 
-// Iterate over all executors
-Jenkins.instance.computers.each { computer ->
-    def now = System.currentTimeMillis()
-    def longRunningThreshold = TimeUnit.HOURS.toMillis(24)
-    
-    computer.executors.each { executor ->
-        def executable = executor.currentExecutable
-        if (executable != null) {
-            if (executable instanceof Run && !processedBuilds.contains(executable)) {
-                def build = executable
-                if (build.isBuilding()) {  // Check if the build is still running
-                    def job = build.getParent()
-                    processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds)
-                }
-            } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
-            }
-        }
-    }
-
-    computer.oneOffExecutors.each { executor ->
-        def executable = executor.currentExecutable
-        if (executable != null) {
-            if (executable instanceof Run && !processedBuilds.contains(executable)) {
-                def build = executable
-                if (build.isBuilding()) {  // Check if the build is still running
-                    def job = build.getParent()
-                    processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds)
-                }
-            } else if (executable instanceof ExecutorStepExecution.PlaceholderTask.PlaceholderExecutable) {
-                handlePlaceholderExecutable(executable, now, longRunningThreshold, counter, processedBuilds)
-            }
+// Function to process multibranch project builds
+def processMultiBranchProjects(job, now, longRunningThreshold, counter, processedBuilds) {
+    if (job instanceof org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject) {
+        job.getItems().each { branchProject ->
+            processJobBuilds(branchProject, now, longRunningThreshold, counter, processedBuilds)
         }
     }
 }
 
-// Check multibranch projects for long-running builds
-Jenkins.instance.getAllItems(WorkflowMultiBranchProject.class).each { multiBranchProject ->
-    multiBranchProject.getItems().each { branchProject ->
-        processJobBuilds(branchProject, now, longRunningThreshold, counter, processedBuilds)
+// Iterate over all jobs in Jenkins instance
+def now = System.currentTimeMillis()
+def longRunningThreshold = TimeUnit.HOURS.toMillis(24)
+
+Jenkins.instance.getAllItems(Job.class).each { job ->
+    if (job instanceof org.jenkinsci.plugins.workflow.job.WorkflowJob || 
+        job instanceof com.tikal.jenkins.plugins.multijob.MultiJobProject || 
+        job instanceof FreeStyleProject || 
+        job instanceof org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject) {
+        
+        processJobBuilds(job, now, longRunningThreshold, counter, processedBuilds)
+        
+        // Specifically handle multibranch projects
+        processMultiBranchProjects(job, now, longRunningThreshold, counter, processedBuilds)
     }
 }
 
