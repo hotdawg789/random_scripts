@@ -4,12 +4,12 @@ import hudson.model.*
 // Function to print job details
 def printJobDetails(job) {
     println "Job: ${job.fullDisplayName}"
-    println "Keep Build Records: ${job.getBuildDiscarder()}"
-    if (job.getBuildDiscarder() != null) {
-        println "Days to keep builds: ${job.getBuildDiscarder().getStrategy().getDaysToKeepStr()}"
-        println "Max # of builds to keep: ${job.getBuildDiscarder().getStrategy().getNumToKeepStr()}"
-        println "Days to keep artifacts: ${job.getBuildDiscarder().getStrategy().getArtifactDaysToKeepStr()}"
-        println "Max # of artifacts to keep: ${job.getBuildDiscarder().getStrategy().getArtifactNumToKeepStr()}"
+    def logRotator = job.getBuildDiscarder()
+    if (logRotator instanceof hudson.tasks.LogRotator) {
+        println "Days to keep builds: ${logRotator.getDaysToKeep()}"
+        println "Max # of builds to keep: ${logRotator.getNumToKeep()}"
+        println "Days to keep artifacts: ${logRotator.getArtifactDaysToKeep()}"
+        println "Max # of artifacts to keep: ${logRotator.getArtifactNumToKeep()}"
     } else {
         println "No build discard strategy is set."
     }
