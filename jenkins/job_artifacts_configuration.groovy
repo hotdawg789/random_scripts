@@ -1,15 +1,24 @@
 import jenkins.model.*
 import hudson.model.*
 
+// Function to interpret and print the retention policy
+def printRetentionPolicy(label, value) {
+    if (value == -1) {
+        println "${label}: No limit"
+    } else {
+        println "${label}: ${value}"
+    }
+}
+
 // Function to print job details
 def printJobDetails(job) {
     println "Job: ${job.fullDisplayName}"
     def logRotator = job.getBuildDiscarder()
     if (logRotator instanceof hudson.tasks.LogRotator) {
-        println "Days to keep builds: ${logRotator.getDaysToKeep()}"
-        println "Max # of builds to keep: ${logRotator.getNumToKeep()}"
-        println "Days to keep artifacts: ${logRotator.getArtifactDaysToKeep()}"
-        println "Max # of artifacts to keep: ${logRotator.getArtifactNumToKeep()}"
+        printRetentionPolicy("Days to keep builds", logRotator.getDaysToKeep())
+        printRetentionPolicy("Max # of builds to keep", logRotator.getNumToKeep())
+        printRetentionPolicy("Days to keep artifacts", logRotator.getArtifactDaysToKeep())
+        printRetentionPolicy("Max # of artifacts to keep", logRotator.getArtifactNumToKeep())
     } else {
         println "No build discard strategy is set."
     }
