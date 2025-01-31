@@ -1,0 +1,45 @@
+FROM ubuntu:22.04
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create global installation directory and set permissions
+RUN mkdir -p /usr/local/nvm
+RUN chmod -R 777 /usr/local/nvm
+
+# Set environment variables
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 18.16.1
+ENV NVM_VERSION 0.39.0
+
+# Install nvm globally
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
+
+# Add NVM to path for all users
+RUN echo "export NVM_DIR=\"/usr/local/nvm\"" >> /etc/profile.d/nvm.sh
+RUN echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"" >> /etc/profile.d/nvm.sh
+RUN echo "[ -s \"\$NVM_DIR/bash_completion\" ] && \. \"\$NVM_DIR/bash_completion\"" >> /etc/profile.d/nvm.sh
+
+# Install Node.js and set default version
+SHELL ["/bin/bash", "--login", "-c"]
+RUN source /etc/profile.d/nvm.sh && \
+    nvm install ${NODE_VERSION} && \
+    nvm alias default ${NODE_VERSION} && \
+    nvm use default
+
+# Make node and npm available to all users
+RUN ln -s "$(source /etc/profile.d/nvm.sh && which node)" /usr/local/bin/node
+RUN ln -s "$(source /etc/profile.d/nvm.sh && which npm)" /usr/local/bin/npm
+RUN ln -s "$(source /etc/profile.d/nvm.sh && which nvm)" /usr/local/bin/nvm
+
+# Verify installation
+RUN node --version
+RUN npm --version
+RUN nvm --version
+
+# Set working directory
+WORKDIR /app
