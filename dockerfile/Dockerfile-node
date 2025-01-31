@@ -24,6 +24,11 @@ RUN echo "export NVM_DIR=\"/usr/local/nvm\"" >> /etc/profile.d/nvm.sh
 RUN echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"" >> /etc/profile.d/nvm.sh
 RUN echo "[ -s \"\$NVM_DIR/bash_completion\" ] && \. \"\$NVM_DIR/bash_completion\"" >> /etc/profile.d/nvm.sh
 
+# Also add NVM to bashrc for interactive shells
+RUN echo "export NVM_DIR=\"/usr/local/nvm\"" >> /etc/bash.bashrc
+RUN echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"" >> /etc/bash.bashrc
+RUN echo "[ -s \"\$NVM_DIR/bash_completion\" ] && \. \"\$NVM_DIR/bash_completion\"" >> /etc/bash.bashrc
+
 # Install Node.js and set default version
 SHELL ["/bin/bash", "--login", "-c"]
 RUN source /etc/profile.d/nvm.sh && \
@@ -34,12 +39,11 @@ RUN source /etc/profile.d/nvm.sh && \
 # Make node and npm available to all users
 RUN ln -s "$(source /etc/profile.d/nvm.sh && which node)" /usr/local/bin/node
 RUN ln -s "$(source /etc/profile.d/nvm.sh && which npm)" /usr/local/bin/npm
-RUN ln -s "$(source /etc/profile.d/nvm.sh && which nvm)" /usr/local/bin/nvm
 
 # Verify installation
 RUN node --version
 RUN npm --version
-RUN nvm --version
+RUN bash -c 'source /etc/profile.d/nvm.sh && nvm --version'
 
 # Set working directory
 WORKDIR /app
