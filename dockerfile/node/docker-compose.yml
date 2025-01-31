@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      args:
+        - USERNAME=${USER:-default_user}
+        - USER_UID=${UID:-1000}
+        - USER_GID=${GID:-1000}
+    volumes:
+      - .:/app
+    # Add other configuration as needed

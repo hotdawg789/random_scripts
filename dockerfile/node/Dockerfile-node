@@ -1,5 +1,10 @@
 FROM ubuntu:22.04
 
+# Accept build arguments
+ARG USERNAME=default_user
+ARG USER_UID=1000
+ARG USER_GID=1000
+
 # Install prerequisites
 RUN apt-get update && apt-get install -y \
     curl \
@@ -7,19 +12,29 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
+# Create user and add to sudoers
+RUN groupadd -g $USER_GID $USERNAME && \
+    useradd -m -u $USER_UID -g $USER_GID -s /bin/bash $USERNAME && \
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 # Create global installation directory and set permissions
 RUN mkdir -p /usr/local/nvm
-RUN chmod -R 777 /usr/local/nvm
+RUN chown -R $USERNAME:$USERNAME /usr/local/nvm
+RUN chmod -R 755 /usr/local/nvm
 
 # Set environment variables
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION 18.16.1
 ENV NVM_VERSION 0.39.0
 
+# Switch to created user for NVM installation
+USER $USERNAME
+
 # Install nvm globally
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
 
-# Add NVM to path for all users
+# Add NVM to path for all users (switch back to root to modify system files)
+USER root
 RUN echo "export NVM_DIR=\"/usr/local/nvm\"" >> /etc/profile.d/nvm.sh
 RUN echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"" >> /etc/profile.d/nvm.sh
 RUN echo "[ -s \"\$NVM_DIR/bash_completion\" ] && \. \"\$NVM_DIR/bash_completion\"" >> /etc/profile.d/nvm.sh
@@ -45,5 +60,9 @@ RUN node --version
 RUN npm --version
 RUN bash -c 'source /etc/profile.d/nvm.sh && nvm --version'
 
-# Set working directory
+# Set working directory and ownership
 WORKDIR /app
+RUN chown $USERNAME:$USERNAME /app
+
+# Switch back to created user
+USER $USERNAME
